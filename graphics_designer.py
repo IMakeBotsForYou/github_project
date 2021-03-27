@@ -65,6 +65,13 @@ def hex2rgb(hex):
     return tuple(int(hex[i:i + 2], 16) for i in (0, 2, 4))
 
 
+def get_com(all, value):
+    print(all)
+    for item in all:
+        if str(item[0]) == str(value):
+            return item
+
+
 def start_draw(bruh_repo, s, to_highlight=None, reload_colors=False, erase=False):
     global all_data
     if erase:
@@ -133,20 +140,47 @@ def start_draw(bruh_repo, s, to_highlight=None, reload_colors=False, erase=False
                 cv2.circle(image, (depth * distance + left_margin, current_y), radius=10, color=b_colors[bran],
                            thickness=-1)
                 if str(pre) in connections and str(pre) != -1:
-                    connections[str(pre)].append(data)
-                    connections[str(id)] = [data]
+                    connections[str(pre)]["data"].append(data)
+                    connections[str(id)] = {
+                        "height": current_y,
+                        "data": [data]
+                    }
                 else:
-                    connections[str(id)] = [data]
+                    connections[str(id)] = {
+                        "height": current_y,
+                        "data": [data]
+                    }
                 db['ex'].get_repo(bruh_repo).get_branch(bran).set_depth(depth)
-                print(id, depth, db['ex'].get_repo(bruh_repo).get_branch(bran).depth)
+                # we draw a circle on the commit's depth
         current_y += 80
-        # we draw a circle on the commit's depth
+
+    for index, com in enumerate(commits[::-1]):
+        distance = 100
+        # id, commit_name, desc, branch, next_commit, previous_commit, depth
+        id, comment, _, bran, nex, pre, depth = com
+        for bruh in branches:
+            # is this our branch?
+            if bruh == bran:
+                # this time we already looped through everything, so
+                # there's no need to check if something exists or not.
+                # we will now loop backwards to connect nex instead
+                # of prev.
+                # current_data = (depth * distance + left_margin, current_y, b_colors[bran], comment)
+                if str(nex) != "-1":
+                    next_data = get_com(commits, nex)
+                    i, c, _, b, n, p, d = next_data
+                    latest_data = (d * distance + left_margin, connections[str(nex)]["height"], b_colors[b], c)
+                    connections[str(id)]["data"].append(latest_data)
+        current_y -= 80
+
+
+
     # # # # # # # # # # # # # # # # # # # # # # # # #
     # THIS PART DRAWS THE COMMIT'S CONNECTION LINES #
     # # # # # # # # # # # # # # # # # # # # # # # # #
     for id in connections:
-        origin = connections[id][0]
-        rest = connections[id][1:]
+        origin = connections[id]["data"][0]
+        rest = connections[id]["data"][1:]
         for point in rest:
             x = point[0]
             y = point[1]
@@ -195,7 +229,7 @@ def start_draw(bruh_repo, s, to_highlight=None, reload_colors=False, erase=False
     # THIS PART DRAWS THE CONNECTIONS TABLE #
     # # # # # # # # # # # # # # # # # # # # #
     for id in connections:
-        rest = connections[id]
+        rest = connections[id]["data"]
         for point in rest:
             x, y, color, comment = point
             font = cv2.FONT_HERSHEY_SIMPLEX
