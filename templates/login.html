@@ -1,0 +1,28 @@
+{% extends "log_reg_temp.html" %}
+{% block title %}GITGUDHUB Login{% endblock %}
+{% block not_yet %}
+<h4><a href="/register">Not registered yet?</a></h4>
+{% endblock %}
+{% block form %}
+<br><br><br><br>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for msg in messages %}
+                <p class="flash_msg cen"><b>{{msg}}</b></p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    <div id="login">
+        <form name='form-login'
+        action="#" method="POST">
+          <span class="fa fa-user"></span>
+            <input type="text" name="name" id="user" placeholder="Username">
+
+          <span class="fa fa-lock"></span>
+            <input type="password" name="pass" id="pass" placeholder="Password">
+
+          <input type="submit" value="Login">
+
+        </form>
+    </div>
+{% endblock %}

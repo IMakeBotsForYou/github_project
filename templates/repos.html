@@ -1,0 +1,109 @@
+{% extends "log_reg_temp.html" %}
+{% block title %}GitGudHub-{{session['user']}}{% endblock %}
+<head>
+  <meta charset="utf-8">
+  <title>{{session['reloads']}}</title>
+</head>
+<body>
+{% block form %}
+{% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for msg in messages %}
+                 <p class="flash_msg cen"><b>{{msg}}</b></p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+  <br><br><br>
+  <div class="drawing_box white">
+    <form name="commit_select" method="POST" action="">
+      <input type='hidden' name="to_highlight" id='commit_number'/>
+      <img class="lisa landscape" src="{{url_for('static', filename='lisa.png')}}"/>
+      {% with path = session['path'] %}
+        <div id="graph"><img class="graph_man" src="/static/{{path}}" usemap="#map"/></div>
+        <map name="map"><br>
+        {% with areas = session['areas'] %}
+            {% with size = session['image_size'] %}
+                {% for commit, branch, index in areas %}
+                      <area shape="rect" id="commit_{{commit}}" href="#" coords="0,{{index * 80 + 15}},{{size}},{{index * 80 + 60}}"/>
+                {% endfor %}
+            {% endwith %}
+        {% endwith %}
+        </map>
+      {% endwith %}
+      </form>
+  </div>
+    <div class="right-man">
+      <div class="select">
+        <form method="POST" action="">
+            {% with repos = session['repos'] %}
+                {% if repos %}
+                    <label for="repos">Choose a repo > </label>
+                    <select name="repos" id="repos">
+                        <option value=""> </option>
+                        {% for id, name in repos %}
+                            <option value="{{id}}">{{name}}</option>
+                        {% endfor %}
+                    </select>
+                    {% else %}
+                        <p> you have no repos <p>
+                {% endif %}
+            {% endwith %}
+          <button type="submit">Render</button>
+        </form>
+      </div>
+      <div id="actions">
+          <script src="{{url_for('static', filename='jquery-1.11.0.min.js')}}"></script>
+          <button class="action_button" id="commit_b" style="margin-top:0%;" ><b>Commit</b><br>(Will fork from this commit <br>if it's not the head of the branch)</button>
+          <button class="action_button" id="fork_b" style="margin-top:7%;" ><b>Fork</b><br>Make a copy of this commit,<br>opening a new branch</button>
+          <button class="action_button" id="revert_b" style="margin-top:7%;" ><b>Revert to this commit</b><br>Revert the current branch to this commit<br>deleting what comes after</button>
+          <script>
+          $(document).ready(function(){
+            $("#commit_b").click(function(e) {
+                $("commit_b").prop("disabled", true);
+                $("#commit-popup").fadeIn();
+            });
+             $("#modal-close-button").click(function(e) {
+                $("commit_b").prop("disabled", true);
+                $("#commit-popup").fadeOut();
+            });
+             $("#confirm-commit").click(function(e) {
+                $("commit_b").prop("disabled", true);
+                $("#commit-popup").fadeOut();
+               document.getElementById('prev_commit_man').value = {{session['to_highlight']}};
+               document.commit_select.submit()
+            });
+          });
+          </script>
+      </div>
+    </div>
+     <div id="commit-popup">
+        <h2>
+            Commiting from: {{session['current_commit_name']}}<br>
+            {{session['current_commit_desc']}}
+        </h2>
+        <div>
+            <form id="commit_info" method="POST" action="">
+              <label for="name">Commit name ></label><br>
+              <input type="text" id="name" name="name" maxlength="25" required><br><br>
+              <label for="comment">Description ></label><br>
+              <input type="text" id="comment" name="comment" maxlength="100"><br><br>
+              <input id="confirm-commit" type="submit" value="Confirm" />
+              <input type='hidden' name="commit_man" id='prev_commit_man'/>
+            </form>
+        </div>
+     </div>
+</body>
+    <script language="javascript" type="text/javascript">
+    function send_that_damn_value(value) {
+        document.getElementById('commit_number').value = value;
+        document.commit_select.submit();
+    }
+        {% with areas = session['areas'] %}
+            {% with size = session['image_size'] %}
+                {% for commit, branch, index in areas %}
+                    document.getElementById ("commit_{{commit}}").addEventListener ("click", function() {send_that_damn_value({{commit}})}, false);
+                {% endfor %}
+            {% endwith %}
+        {% endwith %}
+</script>
+{% endblock %}

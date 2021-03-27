@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<head>
+  <title>{% block title %}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/drawing_things.css">
+  <link rel="stylesheet" href="/static/register.css">
+  <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Varela+Round" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
+<body>
+<div class="topnav">
+  {% if 'user' in session %}
+    <div class="navigation_man">
+      <a href="/users">Browse users</a>
+      <a href="/repos">{{session['user']}}'s Profile </a>
+      <a href="/logout">Logout</a>
+    </div>
+  {% else %}
+    <div class="header_man header">{% block not_yet %}{% endblock %}</div>
+  {% endif %}
+</div>
+{% block form %}{% endblock %}
+</body>

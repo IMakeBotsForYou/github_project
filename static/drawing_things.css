@@ -1,0 +1,133 @@
+div.drawing_box {
+    position: absolute;
+    margin-left: 20px;
+    height: 80%;
+    width: 80%;
+}
+
+.right-man{
+    position: absolute;
+    z-index: 50;
+    right: 0;
+    top: 15%;
+    width: 30%;
+    height: 80%
+    text-align: right;
+}
+
+div.select {
+    position: relative;
+    right: 0;
+    top: 10px;
+    height: 50px;
+    width: 100%;
+    z-index: 50;
+}
+
+img {
+  max-width: 100%;
+  max-height: 100%;
+  overflow: auto;
+}
+
+.commit_info{
+    position: relative;
+    left: 10px;
+}
+
+.landscape {
+  height: 100%;
+  width: 80%;
+}
+
+.action_button {
+	box-shadow:inset 0px 1px 3px 0px #91b8b3;
+	background:linear-gradient(to bottom, #768d87 5%, #6c7c7c 100%);
+	background-color:#768d87;
+	position: relative;
+	margin: 0 auto;
+	border-radius:17px;
+	border:3px solid #566963;
+	cursor:pointer;
+	color:#ffffff;
+	font-family:Georgia;
+	font-size:16px;
+	font-weight:bold;
+	padding:11px 23px;
+	text-decoration:none;
+	text-shadow:0px -1px 0px #2b665e;
+	font-family: Varela Round;
+    width: 100%;
+}
+.action_button:hover {
+	background:linear-gradient(to bottom, #6c7c7c 5%, #768d87 100%);
+	background-color:#6c7c7c;
+}
+.action_button:active {
+	position:relative;
+}
+
+#actions {
+  position:absolute;
+  right: 5%;
+  top: 200%;
+  width: 95%;
+  padding: 22px 22px 22px 22px;
+  border-radius: 5px;
+  background: #282e33;
+  border-top: 3px solid #434a52;
+  border-bottom: 3px solid #434a52;
+  align-items: center;
+  text-align:center;
+}
+
+.lisa{
+  border: 3px solid #0f0;
+  position: relative;
+  z-index: 1;
+  left:0;top:0;
+}
+
+.graph_man{
+  position: relative;
+  left: 0px;
+  top: 0px;
+}
+
+#graph {
+  transform: rotate(0.5deg);
+  position: absolute;
+  z-index: 10;
+  top: 71px;
+  left: 245px;
+  width: 580px;
+  max-height: 420px;
+  overflow-x: scroll;
+  overflow-y: scroll;
+}
+
+#commit-popup{
+    position: absolute;
+    z-index: 1000;
+    display:none;
+    background-color:#000;
+    -webkit-border-radius:15px;
+    -moz-border-radius:15px;
+    color:#fff;
+    max-width: 500px;
+    padding: 0 10px 10px 10px;
+    width: 80%
+    margin-top: 5%;
+    margin-left: 40%;
+    text-align: center;
+}
+
+#commit-popup h2{
+    font-size: 1.2em;
+    font-weight:bold;
+    padding: 10px;
+}
+
+.white{
+color: white;
+}
