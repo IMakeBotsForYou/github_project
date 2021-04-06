@@ -1,4 +1,4 @@
-import sqlite3, re, os, json
+import sqlite3
 
 
 def st2int(array):
@@ -34,20 +34,25 @@ class commit:
         self.comment = comment
         self.parent = parent
         self.creator = creator
-        self.previous = previous_commit
+        self.previous = int(previous_commit)
         self.next_commit = next_commit
         self.depth = self.parent.depth
         self.repo = self.parent.get_repo()
+        self.changed_files = []
         # Adding to database
         if create:
             self.id = len(db.get("commits", "id")) + 1
             db.add("commits (commit_name, comment, branch, repo, creator, previous_commit, next_commit, depth)",
                    reformat((name, comment, parent.get_id(), self.repo, creator, self.previous, -1, self.depth)))
         else:
-            x = f'comment = "{self.comment}" AND branch = "{self.parent.get_id()}" AND commit_name = "{self.name}" AND creator = "{creator}"'
-            x = db.get('commits', 'id', condition=x, first=True)
+            x = f'comment = "{self.comment}" ' \
+                f'AND branch = "{self.parent.get_id()}" ' \
+                f'AND commit_name = "{self.name}" ' \
+                f'AND creator = "{creator}"'
+            x = db.get('commits', 'id, next_commit', condition=x, first=False)[0]
             if x:
                 self.id = x[0]
+                self.next_commit = int(x[1])
         # add sync (?) function
 
     def to_json(self):
@@ -88,29 +93,28 @@ class commit:
 
 
 class branch:
-    def __init__(self, db, name, repo, create=True, id=1, files=None, depth=0):
+    def __init__(self, db, name, repo, create=True, id=1, files=None, depth=-1):
         # Declare variables
         if files is None:
             files = []
         self.db = db
         self.repo = repo
         self.name = name
-        self.files = []
         self.commits = []
         # self.depth = len(self.db.get_repos())
         # Adding to database
         if create:
-            db.add("branches (name, repo, files, commits)", reformat((name, repo, " ", " ")))
+            db.add("branches (name, repo, commits)", reformat((name, repo, " ")))
             self.id = len(db.get("branches", "id"))
         else:
-            self.files = files
             self.id = id
-        if depth == 0:
-            self.depth = len(db.get("repos", "branches", f'id="{self.repo}"'))
+        if depth == -1:
+            self.depth = len([x for x in db.get("branches", "id", f'repo={repo}') if x < self.id])
         else:
             self.depth = depth
-        for numba, x, comment, creator, previous_commit in db.get("commits", "id,commit_name,comment,creator,previous_commit",
-                                                                  condition=f'branch="{self.id}"', first=False):
+        for numba, x, comment, creator, previous_commit in \
+                db.get("commits", "id, commit_name, comment, creator, previous_commit",
+                       condition=f'branch="{self.id}"', first=False):
             self.commits.append(commit(db, x, comment, self, creator, previous_commit, id=numba, create=False))
         if self.commits:
             self.head = self.commits[-1]
@@ -124,7 +128,6 @@ class branch:
             "id": self.id,
             "name": self.name,
             "repo": self.repo,
-            "files": self.files,
             "commits": [x.to_json() for x in self.commits],
             "depth": self.depth
         }
@@ -158,23 +161,25 @@ class branch:
             previous = -1 if (len(self.commits) == 0 or first) else self.commits[-1].get_id()
         self.commits.append(
             commit(self.db, name, comment, self, creator, previous, next_commit=next_commitx))
+
         # we also need to say in that commit that it's next
         # commit is the one we've added.
         # -1 is now the new commit.
         if len(self.commits) > 1:
             self.commits[-2].set_next(self.commits[-1].get_id())
             self.head = self.commits[-1]
-        self.db.edit("branches", "commits", ", ".join(int2st([comm.get_id() for comm in self.commits])), condition=f'id={self.id}')
+        self.db.edit("branches", "commits", ", ".join(int2st([comm.get_id() for comm in self.commits])),
+                     condition=f'id={self.id}')
 
     def get_commit(self, id):
         for c in self.commits:
-            if str(c.get_id()) == str(id):
+            if str(c.get_id()) == str(id) or c.get_name() == str(id):
                 return c
-        return "Not Found"
+        raise IndexError(f'Could not find {id.get_name()} in {self.name}')
 
     def revert_to_commit(self, index):
         self.head = self.commits[index].get_id()
-        self.commits = self.commits[:index+1]
+        self.commits = self.commits[:index + 1]
 
     def delete_commit(self, id):
         try:
@@ -186,10 +191,17 @@ class branch:
 
 
 class repository:
-    def __init__(self, db, name, owners, branches=None, create=True, id=1):
+    def __init__(self, db, name, owners, creator, branches=None, create=True, id=1):
         # Declare variables
+
         self.name = name
-        self.owners = owners
+        if isinstance(owners, str):
+            self.owners = owners.split(", ")
+        else:
+            self.owners = owners
+        if creator not in self.owners:
+            self.owners.append(creator)
+        self.creator = creator
         if isinstance(branches, str):
             self.branches = branches.split(", ")
         else:
@@ -208,15 +220,10 @@ class repository:
             self.branches.append(branch(db, "Main", self.id))
         else:
             self.id = id
-            self.owners = self.db.get("repos", "owners", condition=f'id={self.id}')[0].split(", ")
-        # self, db, name, repo, create=True, id=1, files=[]
-        if create:
-            x = 'AND name!="Main"'
-        else:
-            x = ""
-        for name, id_bruh, files in \
-                self.db.get("branches", "name, id, files", condition=f'repo="{self.id}" {x}', first=False):
-            self.branches.append(branch(self.db, name, self.id, create=False, id=id_bruh, files=files))
+            db.edit('repos', 'owners', ", ".join(self.owners), condition=f'id="{self.id}"')
+            for name, id_bruh in \
+                    self.db.get("branches", "name, id", condition=f'repo="{self.id}"', first=False):
+                self.branches.append(branch(self.db, name, self.id, create=False, id=id_bruh))
         db.sync_ownership()
         self.db.sync_branches()
         # add sync (?) function
@@ -230,14 +237,7 @@ class repository:
             "owners": self.owners
         }
 
-    def get_lowest_empty(self):
-        lowest = 0
-        while lowest in self.current_depths:
-            lowest += 1
-            self.current_depths.append(lowest)
-        return lowest
-
-    def fork(self, name, forker, new_name=None, fork_from_commit=None):
+    def fork(self, name, forker, new_name=None, fork_from_commit=None, comment=""):
         #  db, name, repo, create=True, id=1, files=[]
         to_copy = self.get_branch(name)
         if not fork_from_commit:
@@ -248,19 +248,20 @@ class repository:
                 raise NameError(
                     f"There's already a branch called {name} in repo {self.name}, please pick a different name")
         else:
-            new_name = name+"_fork"
-
-        lowest = self.get_lowest_empty()
-
-        self.branches.append(branch(self.db, new_name, self.id, files=to_copy.get_files(), depth=lowest))
+            new_name = name + "_fork"
+        self.branches.append(branch(self.db, new_name, self.id, files=to_copy.get_files()))
         # name, comment, creator, previous = -1, first = False, next_commitx = -1)
-        self.branches[-1].create_commit(f"Forked from {to_copy.get_name()}", "Forked.", forker, previous=fork_from_commit)
+        self.branches[-1].create_commit(f"Forked from {to_copy.get_name()}", "Forked.", forker,
+                                        previous=fork_from_commit)
 
-    def merge(self, merge_me, merge_into):
+    def merge(self, merge_me, merge_into, merger, commit_name="Merged", comment="No comment provided."):
         merge_me = self.get_branch(merge_me)
         merge_into = self.get_branch(merge_into)
-        self.current_depths.remove(merge_me.depth)
-        merge_into.set_depth(merge_me.depth)
+        # self.current_depths.remove(merge_me.depth)
+        prev_h = merge_into.head
+        merge_into.create_commit(commit_name, comment, merger, merge_me.head.get_id())
+        merge_me.head.set_next(merge_into.head.get_id())
+        prev_h.set_next(merge_into.head.get_id())
 
     def edit_owners(self, new_owners):
         self.owners = ", ".join(list(set(new_owners)))
@@ -291,13 +292,15 @@ class repository:
         if name in names:
             raise NameError(f"There's already a branch called {name} in repo {self.name}, please pick a different name")
         self.branches.append(branch(self.db, name, self.id, create=True))
+        # self.current_depths.append(self.get_lowest_empty())
+        # self.branches[-1].set_depth(self.get_lowest_empty())
         self.db.sync_branches()
 
     def get_branch(self, name):
         for b in self.branches:
             if b.get_name() == name or str(b.get_id()) == str(name):
                 return b
-        raise IndexError(f"Coulnd't find {name} in repo {self.name}")
+        raise IndexError(f"Couldn't find branch {name} in repo {self.name}")
 
     def delete_branch(self, name):
         try:
@@ -320,19 +323,34 @@ class Database:
         # folder_path = re.sub(r"(.+)(/.+)", r"\1", path).replace("/", "\\")
         # if not os.path.exists(folder_path):
         #     os.makedirs(folder_path)
-
         self.path = path.split(".")[0] + '.db'
         self.data = sqlite3.connect(self.path, check_same_thread=False)
         self.cursor = self.data.cursor()
-        self.repos = [
-            repository(self, name, owners,
-                       [branch(self, name, repo, files)
-                        for name, repo, files in
-                        self.get("branches JOIN repos ON repos.branches LIKE branches.id",
-                                 "branches.name, branches.repo, branches.files", first=False)],
-                       create=False,
-                       id=id) for id, name, branches, owners in self.get("repos", "*", first=False)
-        ]
+        self.repos = []
+        self.purge_deleted_commit_ids()
+        for id, name, branches, owners, creator in self.get("repos", "*", first=False):
+            self.repos.append(
+                repository(self, name, owners, creator,
+                           [],
+                           create=False,
+                           id=id))
+        self.remove("messages")
+        # branch(self, name=name, repo=repo, create=False,files=files)
+        #                         for name, repo, files in
+        #                         self.get("branches JOIN repos ON repos.branches LIKE branches.id",
+        #                                  "branches.name, branches.repo, branches.files", first=False)
+        self.add("messages",
+                 reformat(("1", "Urgent message", "You got bamboozled lolololol", "Eran", "Guy", "normal", "/ignore")))
+
+        self.add("messages",
+                 reformat(("2", "Merge request", "can i merge pain into main plz", "Eran", "Guy", "question", "/merge*8*4")))
+
+        self.add("messages",
+                 reformat(("3", "Yet another request", "lets just merge it all. whats the worst that can happen?", "Eran", "Guy", "question", "/merge*7*9")))
+
+        self.add("messages",
+                 reformat(("4", "Actually urgent!", "Fell for it again", "Eran", "Guy", "normal", "/ignore")))
+
         self.fix_seq()
         self.sync_commits()
         self.sync_branches()
@@ -341,12 +359,13 @@ class Database:
     def get_all_names(self):
         return self.get("users", "name")
 
-    def get_users(self):
-        return self.get("users", "*", first=False)
+    def get_users(self, colum=None):
+        return self.get("users", colum if colum else "*", first=colum)
 
     def get_commits_info(self, repo):
         if str(repo).isnumeric():
-            return self.get('commits', 'id, commit_name, comment, branch, next_commit, previous_commit, depth', condition=f'repo={repo}', first=False)
+            return self.get('commits', 'id, commit_name, comment, branch, next_commit, previous_commit, depth',
+                            condition=f'repo={repo}', first=False)
         else:
             repo_id = self.get("repos", "id", f'name="{repo}"')[0]
             return self.get(f'commits', 'id, commit_name, comment, branch, '
@@ -360,31 +379,67 @@ class Database:
         self.edit("sqlite_sequence", "seq", len(r), 'name="repos"')
         c = self.get("commits", "id")
         self.edit("sqlite_sequence", "seq", len(c), 'name="commits"')
+        m = self.get("messages", "id")
+        self.edit("sqlite_sequence", "seq", len(m), 'name="messages"')
         # b = self.get("branches", "id")
         # self.edit("sqlite_sequence", "seq", 0 if not b else b[-1], 'name="branches"')
         # r = self.get("branches", "id")
         # self.edit("sqlite_sequence", "seq", 0 if not r else r[-1], 'name="repos"')
         # c = self.get("commits", "id")
         # self.edit("sqlite_sequence", "seq", 0 if not c else c[-1], 'name="commits"')
+
     # self, db, name, owners, create=True, id=1
 
     def get_repos(self):
         return self.repos
 
-    def to_json(self):
-        return [x.to_json() for x in self.repos]
+    def get_messages(self):
+        mes = self.get('messages', '*', first=False)
+        ret = {"status": "empty", "messages": {}}
+        for message in mes:
+            xx, title, content, sender, receiver, m_type, action = message
+            ret["status"] = "200"
+            if receiver in ret['messages']:
+                ret["messages"][receiver].append(
+                    {"id": xx,
+                     "title": title,
+                     "content": content,
+                     "sender": sender,
+                     "type": m_type,
+                     "action": action
+                     })
+            else:
+                ret["messages"][receiver] = \
+                    [{"id": xx,
+                      "title": title,
+                      "content": content,
+                      "sender": sender,
+                      "type": m_type,
+                     "action": action
+                      }]
+        return ret
 
-    def create_repository(self, name, owners):
+    def to_json(self):
+        return {
+            "repos": [x.to_json() for x in self.repos],
+            "messages": self.get_messages()
+        }
+
+    def create_repository(self, name, owners, creator):
         try:
-            self.repos.append(repository(self, name, owners.split(", "), None, create=True))
+            self.repos.append(repository(self, name, owners.split(", "), creator, None, create=True))
+
         except:
-            self.repos.append(repository(self, name, owners, " ", create=True))
+            self.repos.append(repository(self, name, owners, creator, " ", create=True))
 
     def delete_repository(self, id):
         for rep in self.repos:
             if str(rep.get_id()) == str(id):
-                self.repos.remove(rep)
+                self.remove("branches", condition=f'repo={id}')
+                self.remove("commits", condition=f'repo={id}')
                 self.remove("repos", condition=f'id="{id}"')
+                self.repos.remove(rep)
+        self.sync_ownership()
 
     def execute(self, line, fetch=None):
         """
@@ -484,12 +539,9 @@ class Database:
     def get_repo(self, val, all=False):
         if all:
             return self.repos
-        for i in self.repos:
-            if str(val).isnumeric():
-                if str(i.get_id()) == str(val): return i
-            else:
-                if str(i.get_name() == val): return i
-        print("Couldn't find", val)
+        x = [rep for rep in self.repos if str(rep.get_id()) == str(val) or rep.get_name() == val]
+        if x:
+            return x[0]
         raise IndexError(f"Couldn't find {val}")
 
     def grant_ownership(self, user, repos_to_grant):
@@ -522,6 +574,18 @@ class Database:
             except Exception as e:
                 print(f"There was a problem revoking {rep} from {user}\nError: {e}")
                 continue
+
+    def purge_deleted_commit_ids(self):
+        com = self.get("commits", "id, previous_commit, next_commit", first=False)
+        for data in com:
+            now = data[0]
+            past = data[1]
+            future = data[2]
+            if len(self.get("commits", "id", f'id={future}')) == 0:
+                self.edit("commits", "next_commit", "-1", condition=f'id={now}')
+
+            if len(self.get("commits", "id", f'id={past}')) == 0:
+                self.edit("commits", "previous_commit", "-1", condition=f'id={now}')
 
     def close(self):
         print("Finished")

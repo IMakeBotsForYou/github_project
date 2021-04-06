@@ -1,0 +1,89 @@
+{% extends "log_reg_temp.html" %}
+{% block title %}GITGUDHUB Inbox{% endblock %}
+{% block form %}
+<style>
+.notification{
+  width: 50%;
+  margin: 0 auto;
+}
+.collapsible {
+  background-color: #777;
+  color: white;
+  cursor: pointer;
+  padding: 18px;
+  width: 100%;
+  border: none;
+  text-align: left;
+  outline: none;
+  font-size: 15px;
+}
+
+.active, .collapsible:hover {
+  background-color: #555;
+}
+
+.content {
+  display: none;
+  overflow: hidden;
+  padding: 18px;
+  left:0px;
+  background-color: #f1f1f1;
+}
+</style>
+<br><br><h1 class="white" style="text-align:center;">Inbox</h1><br><br>
+<div class="notification">
+<form name="action_form" id="action_form" method="POST" action="#">
+    <script src="{{url_for('static', filename='jquery-1.11.0.min.js')}}"></script>
+    <input id="accept" type="text" name="accept" hidden/>
+    <input id="mark-as-read" type="text" name="mark_as_read" hidden/>
+    {% with messages = session['inbox_messages'] %}
+        {% if messages %}
+            {% for id, title, content, sender, type in messages %}
+                <button type="button" class="collapsible">{{title}}</button>
+                <div class="content">
+                    <div><p style="margin: 0 0 14px 0;"><b>Message from {{sender}}:</b><br>{{content}}</p></div>
+                        <div style="margin: 0 auto;">
+                            {% if type == "question" %}
+                                <button class="form-button" id="confirm-button_{{id}}" style="float: left; color: #000;" >Accept</button>
+                                <script>
+                                 $("#confirm-button_{{id}}").click(function(e) {
+                                   document.getElementById('accept').value = "{{id}}";
+                                   document.action_form.submit()
+                                   console.log(document.getElementById('accept').value)
+                                });
+                                </script>
+                            {% endif %}
+                             <button class="form-button" id="close-button_{{id}}" style="float: left;color: #000;" >Mark as read</button>
+                            <script>
+                                 $("#close-button_{{id}}").click(function(e) {
+                                   document.getElementById('mark-as-read').value = "{{id}}";
+                                   document.action_form.submit();
+                                });
+                            </script>
+                        </div>
+                    </div>
+                <br><br>
+            {% endfor %}
+        {% else %}
+            <h1 class="white">No messages</h1>
+        {% endif %}
+    {% endwith %}
+</form>
+</div>
+
+<script>
+var coll = document.getElementsByClassName("collapsible");
+var i;
+for (i = 0; i < coll.length; i++) {
+  coll[i].addEventListener("click", function() {
+    this.classList.toggle("active");
+    var content = this.nextElementSibling;
+    if (content.style.display === "block") {
+      content.style.display = "none";
+    } else {
+      content.style.display = "block";
+    }
+  });
+}
+</script>
+{% endblock %}

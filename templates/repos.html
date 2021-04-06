@@ -19,7 +19,10 @@
       <input type='hidden' name="to_highlight" id='commit_number'/>
       <img class="lisa landscape" src="{{url_for('static', filename='lisa.png')}}"/>
       {% with path = session['path'] %}
-        <div id="graph"><img class="graph_man" src="/static/{{path}}" usemap="#map"/></div>
+        <a name="graph"></a>
+        <div id="graph" class="overflow-man">
+            <img src="/static/{{path}}" usemap="#map"/>
+        </div>
         <map name="map"><br>
         {% with areas = session['areas'] %}
             {% with size = session['image_size'] %}
@@ -51,6 +54,31 @@
           <button type="submit">Render</button>
         </form>
       </div>
+      <div class="commit-information-side white" style="top: 5px;">
+          {% with s = session %}
+            <h2>{{s['current_commit_name']}}</h2><br>
+            <p>{{s['current_commit_desc']}}</p>
+            <hr>
+          {% if s['current_commit_manifest'] and s['to_highlight'] != 0 %}
+                <h3>Changes</h3><br>
+                {% for change in s['current_commit_manifest'] %}
+                    {% if change['action'] == "created" %}
+                        <span>-Created </span><span class="green">{{change['rest']}}</span>
+                    {% endif %}
+                    {% if change['action'] == "updated" %}
+                        <span>-Updated </span><span class="yellow">{{change['rest']}}</span>
+                    {% endif %}
+                    {% if change['action'] == "deleted" %}
+                        <span>-Delted </span><span class="red">{{change['rest']}}</span>
+                    {% endif %}
+                    {% if change['action'] == "added" %}
+                        <span>-Added </span><span class="green">{{change['rest']}}</span>
+                    {% endif %}
+                    <br>
+                {% endfor %}
+            {% endif %}
+          {% endwith %}
+      </div>
       <div id="actions">
           <script src="{{url_for('static', filename='jquery-1.11.0.min.js')}}"></script>
           <button class="action_button" id="commit_b" style="margin-top:0%;" ><b>Commit</b><br>(Will fork from this commit <br>if it's not the head of the branch)</button>
@@ -59,18 +87,22 @@
           <script>
           $(document).ready(function(){
             $("#commit_b").click(function(e) {
+            {% with s = session["to_highlight"] %}
+                {% if s != 0 %}
                 $("commit_b").prop("disabled", true);
                 $("#commit-popup").fadeIn();
-            });
-             $("#modal-close-button").click(function(e) {
-                $("commit_b").prop("disabled", true);
-                $("#commit-popup").fadeOut();
+                {% endif %}
+            {% endwith %}
             });
              $("#confirm-commit").click(function(e) {
                 $("commit_b").prop("disabled", true);
                 $("#commit-popup").fadeOut();
                document.getElementById('prev_commit_man').value = {{session['to_highlight']}};
                document.commit_select.submit()
+            });
+             $("#close-button").click(function(e) {
+                $("commit_b").prop("disabled", true);
+                $("#commit-popup").fadeOut()
             });
           });
           </script>
@@ -82,13 +114,18 @@
             {{session['current_commit_desc']}}
         </h2>
         <div>
-            <form id="commit_info" method="POST" action="">
-              <label for="name">Commit name ></label><br>
+            <form id="commit_info" method="POST" action="" enctype = "multipart/form-data">>
+              <label for="name">Commit name</label><br>
               <input type="text" id="name" name="name" maxlength="25" required><br><br>
-              <label for="comment">Description ></label><br>
+              <label for="comment">Description</label><br>
               <input type="text" id="comment" name="comment" maxlength="100"><br><br>
-              <input id="confirm-commit" type="submit" value="Confirm" />
+              <input class="form-button" id="confirm-commit" type="submit" style="float: left;" value="Confirm"/>
+              <button class="form-button" id="close-button" style="float: right;" value="Close">Close</button>
               <input type='hidden' name="commit_man" id='prev_commit_man'/>
+
+              <label for="file-selector">Upload</label>
+<!--                 webkitdirectory directory-->
+              <input type = "file" name = "file" id="file-selector" multiple hidden required/>
             </form>
         </div>
      </div>
@@ -105,5 +142,22 @@
                 {% endfor %}
             {% endwith %}
         {% endwith %}
+      (function() {
+    function scroll(e) {
+        e = window.event || e;
+        var delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
+        document.getElementById('graph').scrollTop -= (delta * 40); // Multiplied by 40
+        e.preventDefault();
+    }
+    if (document.getElementById('graph').addEventListener) {
+        // IE9, Chrome, Safari, Opera
+        document.getElementById('graph').addEventListener('mousewheel', scroll, false);
+        // Firefox
+        document.getElementById('graph').addEventListener('DOMMouseScroll', scroll, false);
+    } else {
+        // IE 6/7/8
+        document.getElementById('graph').attachEvent('onmousewheel', scroll);
+    }
+})();
 </script>
 {% endblock %}

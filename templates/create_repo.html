@@ -1,0 +1,13 @@
+{% extends "log_reg_temp.html" %}
+{% block title %}GITGUDHUB Inbox{% endblock %}
+{% block form %}
+<br><br><h1 class="white" style="text-align:center;">Create a repo</h1><br><br>
+<div class="middle-panel">
+    <form action="" method="POST">
+    <input type="text" name="name" id="name" placeholder="Repo name">
+        <br><br>
+    <input type="text" name="owners" id="owners" placeholder="Names (e.g Ron, Dan, ..)"><br><br>
+    <button type='submit' class="form-button" id="confirm-commit">Create repo</button>
+    </form>
+</div>
+{% endblock %}
