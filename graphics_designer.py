@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
 from json import load
-from website_manager import get_db
+import website_manager
+import database_manager
 
 all_data = {
     "cp_data": {
@@ -28,7 +29,7 @@ def initialize_graphics():
             cl[i][value] = tuple(int(a[i:i + 2], 16) for i in (0, 2, 4))
 
     all_colours = cl.copy()
-    db_obj = get_db()
+    db_obj = database_manager.my_db
 
 
 def get_cl():
@@ -56,8 +57,9 @@ def calculate_size(bruh_repo, data):
     commits = db_obj.get_commits_info(bruh_repo)
     lenghts = [cv2.getTextSize(x[0], cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, thickness=2)[0][0] + x[1] * 100 + 70 for x
                in data]
+
     try:
-        all_data["size"] = [len(commits) * 80, max(lenghts)]
+        all_data["size"] = [len(commits) * 80 + 10, max(lenghts)]
     except:
         all_data["size"] = [len(commits) * 80 + 10, 10]
 

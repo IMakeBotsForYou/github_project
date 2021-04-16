@@ -1,5 +1,5 @@
 import sqlite3
-
+import json
 
 def st2int(array):
     return [int(x) for x in array]
@@ -7,6 +7,21 @@ def st2int(array):
 
 def int2st(array):
     return [str(x) for x in array]
+
+
+def smallest_free(array):
+    lowest = 1
+    if not array:
+        return 1
+    m = min(array)
+    if m != 1:
+        return 1
+    for i, value in enumerate(array[1:]):
+        if value - lowest == 1:
+            lowest = value
+        else:
+            return lowest + 1
+    return lowest
 
 
 def reformat(vars):
@@ -41,7 +56,9 @@ class commit:
         self.changed_files = []
         # Adding to database
         if create:
-            self.id = len(db.get("commits", "id")) + 1
+            x = db.get("commits", "id")
+            x.append(smallest_free(x))
+            self.id = smallest_free(x)
             db.add("commits (commit_name, comment, branch, repo, creator, previous_commit, next_commit, depth)",
                    reformat((name, comment, parent.get_id(), self.repo, creator, self.previous, -1, self.depth)))
         else:
@@ -93,19 +110,20 @@ class commit:
 
 
 class branch:
-    def __init__(self, db, name, repo, create=True, id=1, files=None, depth=-1):
+    def __init__(self, db, name, repo, owner, create=True, id=1, files=None, depth=-1):
         # Declare variables
         if files is None:
             files = []
         self.db = db
         self.repo = repo
         self.name = name
+        self.owner = owner
         self.commits = []
         # self.depth = len(self.db.get_repos())
         # Adding to database
         if create:
-            db.add("branches (name, repo, commits)", reformat((name, repo, " ")))
-            self.id = len(db.get("branches", "id"))
+            db.add("branches (name, repo, commits, owner)", reformat((name, repo, " ", owner)))
+            self.id = smallest_free(db.get("branches", "id"))
         else:
             self.id = id
         if depth == -1:
@@ -199,6 +217,7 @@ class repository:
             self.owners = owners.split(", ")
         else:
             self.owners = owners
+
         if creator not in self.owners:
             self.owners.append(creator)
         self.creator = creator
@@ -214,16 +233,18 @@ class repository:
         # Adding to database
         if create:
             db.add("repos (name, branches)", reformat((name, "")))
-            self.id = db.get("repos", "id")[-1]
+            self.id = smallest_free(db.get("repos", "id"))
             db.edit('repos', 'owners', ", ".join(self.owners), condition=f'id="{self.id}"')
+            db.edit('repos', 'creator', self.creator, condition=f'id="{self.id}"')
             # self, db, name, repo, create=True, id=1, files=None
-            self.branches.append(branch(db, "Main", self.id))
+            self.branches.append(branch(db, "Main", self.id, self.creator))
+            self.branches[0].create_commit("First commit", f"Initialized repo {self.name}", self.creator, first=True)
         else:
             self.id = id
             db.edit('repos', 'owners', ", ".join(self.owners), condition=f'id="{self.id}"')
-            for name, id_bruh in \
-                    self.db.get("branches", "name, id", condition=f'repo="{self.id}"', first=False):
-                self.branches.append(branch(self.db, name, self.id, create=False, id=id_bruh))
+            for name, id_bruh, owner in \
+                    self.db.get("branches", "name, id, owner", condition=f'repo="{self.id}"', first=False):
+                self.branches.append(branch(self.db, name, self.id, create=False, id=id_bruh, owner=owner))
         db.sync_ownership()
         self.db.sync_branches()
         # add sync (?) function
@@ -234,7 +255,8 @@ class repository:
             "id": self.id,
             "name": self.name,
             "branches": [x.to_json() for x in self.branches],
-            "owners": self.owners
+            "owners": self.owners,
+            "creator": self.creator
         }
 
     def fork(self, name, forker, new_name=None, fork_from_commit=None, comment=""):
@@ -249,7 +271,7 @@ class repository:
                     f"There's already a branch called {name} in repo {self.name}, please pick a different name")
         else:
             new_name = name + "_fork"
-        self.branches.append(branch(self.db, new_name, self.id, files=to_copy.get_files()))
+        self.branches.append(branch(self.db, new_name, self.id, files=to_copy.get_files(), owner=forker))
         # name, comment, creator, previous = -1, first = False, next_commitx = -1)
         self.branches[-1].create_commit(f"Forked from {to_copy.get_name()}", "Forked.", forker,
                                         previous=fork_from_commit)
@@ -270,12 +292,12 @@ class repository:
 
     def add_owners(self, new_owners):
         self.owners.append(new_owners)
-        self.edit_owners(self.owners)
+        self.edit_owners(", ".join(self.owners))
         self.db.sync_ownership()
 
     def remove_owners(self, new_owners):
         self.owners.remove(new_owners)
-        self.edit_owners(self.owners)
+        self.edit_owners(", ".join(self.owners))
         self.db.sync_ownership()
 
     def get_id(self):
@@ -287,11 +309,11 @@ class repository:
     def get_owners(self):
         return self.owners
 
-    def create_branch(self, name):
+    def create_branch(self, name, creator):
         names = [b.get_name() for b in self.branches]
         if name in names:
             raise NameError(f"There's already a branch called {name} in repo {self.name}, please pick a different name")
-        self.branches.append(branch(self.db, name, self.id, create=True))
+        self.branches.append(branch(self.db, name, self.id, create=True, owner=creator))
         # self.current_depths.append(self.get_lowest_empty())
         # self.branches[-1].set_depth(self.get_lowest_empty())
         self.db.sync_branches()
@@ -300,7 +322,7 @@ class repository:
         for b in self.branches:
             if b.get_name() == name or str(b.get_id()) == str(name):
                 return b
-        raise IndexError(f"Couldn't find branch {name} in repo {self.name}")
+        raise IndexError(f"Couldn't find branch {name} in repo {self.name}|{self.id}")
 
     def delete_branch(self, name):
         try:
@@ -334,22 +356,19 @@ class Database:
                            [],
                            create=False,
                            id=id))
-        self.remove("messages")
         # branch(self, name=name, repo=repo, create=False,files=files)
         #                         for name, repo, files in
         #                         self.get("branches JOIN repos ON repos.branches LIKE branches.id",
         #                                  "branches.name, branches.repo, branches.files", first=False)
-        self.add("messages",
-                 reformat(("1", "Urgent message", "You got bamboozled lolololol", "Eran", "Guy", "normal", "/ignore")))
 
-        self.add("messages",
-                 reformat(("2", "Merge request", "can i merge pain into main plz", "Eran", "Guy", "question", "/merge*8*4")))
+        # self.add("messages", reformat(("2", "Merge request", "can i merge pain into main plz", "Eran", "Guy",
+        # "question", "/merge*8*4")))
 
-        self.add("messages",
-                 reformat(("3", "Yet another request", "lets just merge it all. whats the worst that can happen?", "Eran", "Guy", "question", "/merge*7*9")))
+        # self.add("messages", reformat(("3", "Yet another request", "lets just merge it all. whats the worst that
+        # can happen?", "Eran", "Guy", "question", "/merge*7*9")))
 
-        self.add("messages",
-                 reformat(("4", "Actually urgent!", "Fell for it again", "Eran", "Guy", "normal", "/ignore")))
+        with open('static/users.js', 'w') as f:
+            f.write(f'var users = {json.dumps(self.get("users", "name"))}')
 
         self.fix_seq()
         self.sync_commits()
@@ -374,21 +393,41 @@ class Database:
 
     def fix_seq(self):
         b = self.get("branches", "id")
-        self.edit("sqlite_sequence", "seq", len(b), 'name="branches"')
+        self.edit("sqlite_sequence", "seq", smallest_free(b) if b else 0, 'name="branches"')
         r = self.get("repos", "id")
-        self.edit("sqlite_sequence", "seq", len(r), 'name="repos"')
+        self.edit("sqlite_sequence", "seq", smallest_free(r) if r else 0, 'name="repos"')
         c = self.get("commits", "id")
-        self.edit("sqlite_sequence", "seq", len(c), 'name="commits"')
+        self.edit("sqlite_sequence", "seq", smallest_free(c) if c else 0, 'name="commits"')
         m = self.get("messages", "id")
-        self.edit("sqlite_sequence", "seq", len(m), 'name="messages"')
-        # b = self.get("branches", "id")
-        # self.edit("sqlite_sequence", "seq", 0 if not b else b[-1], 'name="branches"')
-        # r = self.get("branches", "id")
-        # self.edit("sqlite_sequence", "seq", 0 if not r else r[-1], 'name="repos"')
-        # c = self.get("commits", "id")
-        # self.edit("sqlite_sequence", "seq", 0 if not c else c[-1], 'name="commits"')
+        self.edit("sqlite_sequence", "seq", smallest_free(m) if m else 0, 'name="messages"')
+        q = self.get("commit_queue", "id")
+        self.edit("sqlite_sequence", "seq", smallest_free(q) if q else 0, 'name="commit_queue"')
 
     # self, db, name, owners, create=True, id=1
+
+    def move_from_queue(self, id_in_queue):
+        data = self.get(
+            "commit_queue",
+            "title, message, creator, branch, previous_commit",
+            f'id={id_in_queue}', first=False
+            )[0]
+        # print(data)
+        title, message, creator, current_branch, previous_commit = data
+        previous_id, current_repo, previous_branch = self.get(
+                                                              "commits", "id, repo, branch",
+                                                              f'id={previous_commit}'
+                                                              ,first=False)[0]
+
+        if previous_branch != current_branch:
+            # then this is a merge into a branch that is not yours.
+            # merge_me, merge_into, merger, commit_name="Merged", comment="No comment provided."
+            self.get_repo(current_repo).merge(previous_branch, current_branch, title, message)
+        else:
+            # name, comment, creator, previous=-1, first=False, next_commitx=-1
+            self.get_repo(current_repo).get_branch(current_branch).create_commit(
+                title, message, creator, previous_id
+            )
+        self.remove("commit_queue", f'id={id_in_queue}')
 
     def get_repos(self):
         return self.repos
@@ -428,15 +467,14 @@ class Database:
     def create_repository(self, name, owners, creator):
         try:
             self.repos.append(repository(self, name, owners.split(", "), creator, None, create=True))
-
         except:
-            self.repos.append(repository(self, name, owners, creator, " ", create=True))
+            self.repos.append(repository(self, name, owners, creator, None, create=True))
 
     def delete_repository(self, id):
         for rep in self.repos:
             if str(rep.get_id()) == str(id):
-                self.remove("branches", condition=f'repo={id}')
                 self.remove("commits", condition=f'repo={id}')
+                self.remove("branches", condition=f'repo={id}')
                 self.remove("repos", condition=f'id="{id}"')
                 self.repos.remove(rep)
         self.sync_ownership()
@@ -459,7 +497,9 @@ class Database:
 
     def add(self, table, values):
         # try:
+        self.fix_seq()
         self.data.execute(F"INSERT INTO {table} VALUES {values}")
+        self.fix_seq()
         # except Exception as e:
         #     print(1, e)
         self.data.commit()
@@ -481,6 +521,8 @@ class Database:
         else:
             self.add("users", reformat((name, password, libraries)))
         self.sync_ownership()
+        with open('static/users.js', 'w') as f:
+            f.write(f'var users = {json.dumps(self.get("users", "name"))}')
 
     def get(self, table, column, condition=None, limit=None, first=True):
         """
@@ -491,6 +533,7 @@ class Database:
         :param first: Return first of every result
         :return: The results
         """
+
         s = f"SELECT {column} FROM {table}"
         if condition: s += f" WHERE {condition}"
         if limit: s += f" LIMIT {limit}"
@@ -504,6 +547,9 @@ class Database:
                 print("Wrong password, you can't do that.")
         except IndexError:
             print(f"User {name} isn't registered!")
+
+        with open('static/users.js', 'w') as f:
+            f.write(f'var users = {json.dumps(self.get("users", "name"))}')
 
     def sync_ownership(self):
         # override user settings by what's saved in the repo data
@@ -542,7 +588,7 @@ class Database:
         x = [rep for rep in self.repos if str(rep.get_id()) == str(val) or rep.get_name() == val]
         if x:
             return x[0]
-        raise IndexError(f"Couldn't find {val}")
+        raise IndexError(f"Couldn't find repo {val}")
 
     def grant_ownership(self, user, repos_to_grant):
         for rep in repos_to_grant.split(", "):
@@ -590,3 +636,15 @@ class Database:
     def close(self):
         print("Finished")
         self.data.close()
+
+
+my_db = None
+
+
+def main():
+    global my_db
+    my_db = Database("databases/database")
+
+
+if __name__ == "__main__":
+    main()
