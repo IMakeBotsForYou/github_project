@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <title>{{session['reloads']}}</title>
 </head>
-<body>
 {% block form %}
+<body>
 {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            {% for msg in messages %}
-                 <p class="flash_msg cen"><b>{{msg}}</b></p>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+    {% if messages %}
+        {% for msg in messages %}
+         <p class="flash_msg cen"><b>{{msg}}</b></p>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
   <br><br><br>
   <div class="drawing_box white">
       {% with repos = session['repos'] %}
@@ -38,6 +38,7 @@
   {% endwith %}
     <script src="{{url_for('static', filename='jquery-1.11.0.min.js')}}"></script>
     <script type="text/javascript" src="{{url_for('static', filename='users.js')}}"></script>
+
     <script>
         autocomplete(document.getElementById("add_user_input"), users);
         $("#invite-user").click(function(e) {
@@ -48,6 +49,7 @@
             $("invite-user").prop("disabled", true);
             $("#add-user-popup").fadeOut()
         });
+
     </script>
       <form name="commit_select" method="POST" action="">
       <input type='hidden' name="to_highlight" id='commit_number'/>
@@ -93,11 +95,14 @@
             <h2>{{s['current_commit_name']}}</h2>
             <p>{{s['current_commit_desc']}}</p>
             <hr>
-          {% if s['current_commit_manifest'] and s['to_highlight'] != 0 %}
-                <h3>Changes</h3>
+          <button type="button" id="show-changes" class="collapsible commit-information-side" style="text-align: center;right:0;">Show Changes</button>
+          <div class="content" id="all-changes" style="color:#fff; background-color:#23272a;">
+              <div>
+                {% if s['current_commit_manifest'] and s['to_highlight'] != 0 %}
+                <h3>Changes</h3><div style="text-align: left;">
                 {% for change in s['current_commit_manifest'] %}
                     {% if change['action'] == "created" %}<br>
-                        <span>-Created </span><span class="green">{{change['rest']}}</span>
+                        <span>--Created </span><span class="green">{{change['rest']}}</span>
                     {% endif %}
                     {% if change['action'] == "updated" %}
                         <span>-Updated </span><span class="yellow">{{change['rest']}}</span>
@@ -110,55 +115,53 @@
                     {% endif %}
                     <br>
                 {% endfor %}
-            {% endif %}
+                </div>
+                {% else %}
+                  <p>No changes file available.</p>
+                {% endif %}
+              </div>
           {% endwith %}
+          </div>
+          <br>
           <script src="{{url_for('static', filename='jquery-1.11.0.min.js')}}"></script><br>
           <button type="button" id="botan-man" class="collapsible commit-information-side" style="text-align: center;right:0;">Show Files</button>
-          <div class="content" style="color:#000;">
-           {% with data = session['current_commit_files'] %}{% if data != 0 %}
-          <a href="/static/current_files/{{path}}" download>Download entire commit</a>
-           {% for path in data %}
-              <p>
-              {{path}}
-              <span class="fa-cloud-download"></span>
-              <a href="/static/current_files/{{path}}" download>Download</a>
-              </p>
-           {% endfor%} {% endif %}{% endwith %}
+          <div class="content" id="all-files" style="color:#fff; background-color:#23272a;">
+              <div>
+               {% with data = session['current_commit_files'] %}{% if data != 0 %}
+              {% if data %}
+              <a href="/static/current_files/{{session['to_highlight']}}.zip" style="color: #ccc" download>Download entire commit</a>
+              {% else %}
+                  <p>Current commit is unavailable.</p>
+              {% endif %}
+                  {% for path in data %}
+                  <p style="text-align: left">
+                  {{path}}
+                  <span class="fa-cloud-download"></span>
+                  <a href="/static/current_files/{{session['user']}}/{{path}}" style="color: #ccc" download>Download</a>
+                  </p>
+               {% endfor%} {% endif %}{% endwith %}
+              </div>
           </div>
-          <script>
-            var coll = document.getElementsByClassName("collapsible");
-            var button = document.getElementById("botan-man");
-            var i;
-            for (i = 0; i < coll.length; i++) {
-              coll[i].addEventListener("click", function() {
-                this.classList.toggle("active");
-                var content = this.nextElementSibling;
-                if (content.style.display === "block") {
-                  content.style.display = "none";
-                  button.innerText = "Show Files";
-                } else {
-                  content.style.display = "block";
-                  button.innerText = "Hide Files";
-                }
-              });
-            }
-</script>
       </div>
       <div id="actions">
           <button class="action_button" id="commit_b" style="margin-top:0%;" ><b>Commit</b><br>(Will fork from this commit <br>if it's not the head of the branch)</button>
           <button class="action_button" id="fork_b" style="margin-top:7%;" ><b>Fork</b><br>Make a copy of this commit,<br>opening a new branch</button>
-
-<!--          <button class="action_button" id="revert_b" style="margin-top:7%;" ><b>Revert to this commit</b><br>Revert the current branch to this commit<br>deleting what comes after</button>-->
           <script>
           $(document).ready(function(){
-            $("#commit_b").click(function(e) {
+
             {% with s = session["to_highlight"] %}
                 {% if s != 0 %}
-                $("commit_b").prop("disabled", true);
-                $("#commit-popup").fadeIn();
+                    $("#commit_b").click(function(e) {
+                         $("commit_b").prop("disabled", true);
+                         $("#commit-popup").fadeIn();
+                    });
+                    $("#fork_b").click(function(e) {
+                         $("fork_b").prop("disabled", true);
+                         $("#fork-popup").fadeIn();
+                    });
                 {% endif %}
-            {% endwith %}
-            });
+             {% endwith %}
+
              $("#confirm-commit").click(function(e) {
                 $("commit_b").prop("disabled", true);
                 $("#commit-popup").fadeOut();
@@ -169,6 +172,28 @@
                 $("commit_b").prop("disabled", true);
                 $("#commit-popup").fadeOut()
             });
+             $("#close-button").click(function(e) {
+                $("commit_b").prop("disabled", true);
+                $("#fork-popup").fadeOut()
+            });
+
+             $("#confirm-fork").click(function(e) {
+                $("fork_b").prop("disabled", true);
+                $("#fork-popup").fadeOut();
+               document.getElementById('prev_fork_man').value = {{session['to_highlight']}};
+               document.fork_select.submit()
+            });
+             $("#close-button-fork").click(function(e) {
+                $("fork_b").prop("disabled", true);
+                $("#fork-popup").fadeOut()
+            });
+             $("#close-button-fork").click(function(e) {
+                $("commit_b").prop("disabled", true);
+                $("#fork-popup").fadeOut()
+            });
+
+
+
           });
           </script>
       </div>
@@ -180,19 +205,35 @@
         </h2>
         <div>
             <form id="commit_info" method="POST" action="" enctype = "multipart/form-data">
-              <label for="name">Commit name</label><br>
-              <input type="text" id="name" name="name" maxlength="25" required><br><br>
-              <label for="comment">Description</label><br>
-              <input type="text" id="comment" name="comment" maxlength="100"><br><br>
+              <label for="commit_name">Commit name</label><br>
+              <input type="text" id="commit_name" name="name" maxlength="25" required><br><br>
+              <label for="commit_comment">Description</label><br>
+              <input type="text" id="commit_comment" name="comment" maxlength="100"><br><br>
               <input class="form-button confirm-commit" id="confirm-commit" type="submit" style="float: left;" value="Confirm"/>
-              <button class="form-button close-button" id="close-button" style="float: right;" value="Close">Close</button>
+              <button class="form-button close-button" id="close-button" style="float: right;" value="Close" type="button">Close</button>
               <input type='hidden' name="commit_man" id='prev_commit_man'/>
-              <label for="file-selector">Select</label>
+              <label for="file-selector-commit">Select</label>
 <!--                 multiple webkitdirectory directory-->
-              <input type="file" name="file" id="file-selector" hidden required accept=".zip,.rar,.7zip"/>
+              <input type="file" name="file" id="file-selector-commit" hidden multiple required accept=".zip,.rar,.7zip"/>
             </form>
         </div>
      </div>
+    <div class="popup" id="fork-popup">
+        <h2>
+            Forking from: {{session['current_commit_name']}}<br>
+            {{session['current_commit_desc']}}
+        </h2>
+        <div>
+            <form id="fork_info" method="POST" action="" enctype = "multipart/form-data">
+              <input class="form-button confirm-fork" id="confirm-fork" type="submit" style="float: left;" value="Confirm"/>
+              <button class="form-button close-button" id="close-button-fork" style="float: right;" value="Close">Close</button>
+              <input type='hidden' name="fork_man" id='prev_fork_man'/>
+
+
+            </form>
+        </div>
+     </div>
+
 </body>
     <script language="javascript" type="text/javascript">
     function send_that_damn_value(value) {
@@ -223,5 +264,32 @@
         document.getElementById('graph').attachEvent('onmousewheel', scroll);
     }
 })();
+</script>
+<script>
+            var files_ctn = document.getElementById("all-files");
+            var files_btn = document.getElementById("botan-man");
+            var change_ctn = document.getElementById("all-changes");
+            var change_btn = document.getElementById("show-changes");
+
+            files_btn.addEventListener("click", function() {
+                if (files_ctn.style.display === "block") {
+                  files_ctn.style.display = "none";
+                  files_btn.innerText = "Show Files";
+                } else {
+                  files_ctn.style.display = "block";
+                  files_btn.innerText = "Hide Files";
+                }
+            });
+
+            change_btn.addEventListener("click", function() {
+                if (change_ctn.style.display === "block") {
+                  change_ctn.style.display = "none";
+                  change_btn.innerText = "Show Changes";
+                } else {
+                  change_ctn.style.display = "block";
+                  change_btn.innerText = "Hide Changes";
+                }
+            });
+
 </script>
 {% endblock %}
