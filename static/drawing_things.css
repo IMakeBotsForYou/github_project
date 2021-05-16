@@ -167,6 +167,13 @@ div.select {
     top: 5%;
     left: 2%;
 }
+.small-input-man{
+    font-family: Varela Round;
+    position: absolute;
+    z-index: 22;
+    top: 14%;
+    left: 2%;
+}
 .popup{
     position: absolute;
     z-index: 1000;

@@ -6,13 +6,6 @@
 </head>
 {% block form %}
 <body>
-{% with messages = get_flashed_messages() %}
-    {% if messages %}
-        {% for msg in messages %}
-         <p class="flash_msg cen"><b>{{msg}}</b></p>
-        {% endfor %}
-    {% endif %}
-{% endwith %}
   <br><br><br>
   <div class="drawing_box white">
       {% with repos = session['repos'] %}
@@ -20,15 +13,32 @@
     <div class="small-button-man">
         <button id="invite-user"><span class="fa fa-user-plus"></span> Add User</button>
     </div>
+      {% if not session['my_branch'] %}
+    <div class="img__wrap">
+        <img class="img__img" src="{{url_for('static', filename='warning_icon.png')}}">
+        <p class="img__description">
+            You are currently looking a branch that isn't yours.<br>
+            Any changes made will be sent as a suggestion to the owner's mailbox.</p>
+    </div>
+      {% else %}
+          {% if session['to_highlight'] != 0 %}
+              <div class="small-input-man">
+                  <form action="" method="POST" autocomplete="off">
+                     <label for="change-branch-name">Change branch name</label><br>
+                     <input id="change-branch-name" name="new_branch_name" style="width: 140px;"/>
+                  </form>
+              </div>
+          {% endif %}
+      {% endif %}
     <div class="popup" id="add-user-popup">
         <h2>
             Invite user
         </h2>
         <div>
-            <form autocomplete="off" action="" id="add_user_form" style="margin: 0 auto;">
+            <form method="POST" autocomplete="off" action="" id="add_user_form" style="margin: 0 auto;">
             <div class="autocomplete" style="position: relative;">
                 <input id="add_user_input" type="text" name="user_to_add" placeholder="Username">
-              </div><br><br>
+            </div><br><br>
               <input class="form-button confirm-commit" id="confirm-add" type="submit" style="float: left;" value="Confirm"/>
               <button type="button" class="form-button close-button" id="close-add" style="float: right;" value="Close">Close</button>
             </form>
@@ -51,6 +61,15 @@
         });
 
     </script>
+      <div class="overflow-man flashed_messages_div">
+          {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for msg in messages %}
+                     <div class="flash_msg cen" style="z-index:20; width: 70%;color: #000;"><b>{{msg}}</b></div>
+                {% endfor %}
+            {% endif %}
+           {% endwith %}
+      </div>
       <form name="commit_select" method="POST" action="">
       <input type='hidden' name="to_highlight" id='commit_number'/>
       <img class="lisa landscape" src="{{url_for('static', filename='lisa.png')}}"/>
@@ -93,7 +112,11 @@
       <div class="commit-information-side white" style="top: 5px;">
           {% with s = session %}
             <h2>{{s['current_commit_name']}}</h2>
+            {% if s['current_commit_name'] != 'No commit selected' %}
+            <h4>In branch {{s['branch_name']}}</h4>
+            <h5>branch owner: {{session['branch_owner']}}</h5>
             <p>{{s['current_commit_desc']}}</p>
+            {% endif %}
             <hr>
           <button type="button" id="show-changes" class="collapsible commit-information-side" style="text-align: center;right:0;">Show Changes</button>
           <div class="content" id="all-changes" style="color:#fff; background-color:#23272a;">
@@ -145,7 +168,7 @@
       </div>
       <div id="actions">
           <button class="action_button" id="commit_b" style="margin-top:0%;" ><b>Commit</b><br>(Will fork from this commit <br>if it's not the head of the branch)</button>
-          <button class="action_button" id="fork_b" style="margin-top:7%;" ><b>Fork</b><br>Make a copy of this commit,<br>opening a new branch</button>
+          <button class="action_button" id="fork_b" style="margin-top:7%;" ><b>Branch off (Copy)</b><br>Make a copy of this commit,<br>opening a new branch</button>
           <script>
           $(document).ready(function(){
 
@@ -187,10 +210,6 @@
                 $("fork_b").prop("disabled", true);
                 $("#fork-popup").fadeOut()
             });
-             $("#close-button-fork").click(function(e) {
-                $("commit_b").prop("disabled", true);
-                $("#fork-popup").fadeOut()
-            });
 
 
 
@@ -218,7 +237,7 @@
             </form>
         </div>
      </div>
-    <div class="popup" id="fork-popup">
+     <div class="popup" id="fork-popup">
         <h2>
             Forking from: {{session['current_commit_name']}}<br>
             {{session['current_commit_desc']}}

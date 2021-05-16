@@ -1,1 +1,1 @@
-var users = ["Dan Lvov"]
+var users = ["Dan Lvov", "Guy"]

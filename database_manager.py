@@ -42,7 +42,7 @@ def reformat(vars):
 
 
 class commit:
-    def __init__(self, db, name, comment, parent, creator, previous_commit=1, id=1, create=True, next_commit=-1):
+    def __init__(self, db, name, comment, parent, creator, previous_commit=1, id=1, create=True, next_commit=-1, activate="0"):
         # Declare variables
         self.db = db
         self.name = name
@@ -51,16 +51,25 @@ class commit:
         self.creator = creator
         self.previous = int(previous_commit)
         self.next_commit = next_commit
+        self.active = int(activate)
         self.depth = self.parent.depth
         self.repo = self.parent.get_repo()
-        self.changed_files = []
         # Adding to database
         if create:
             x = db.get("commits", "id")
             x.append(smallest_free(x))
             self.id = smallest_free(x)
-            db.add("commits (commit_name, comment, branch, repo, creator, previous_commit, next_commit, depth)",
-                   reformat((name, comment, parent.get_id(), self.repo, creator, self.previous, -1, self.depth)))
+            db.add("commits (commit_name, comment, branch, repo, creator, previous_commit, next_commit, depth, active)",
+                   reformat((name,
+                             comment,
+                             parent.get_id(),
+                             self.repo,
+                             creator,
+                             self.previous,
+                             -1,
+                             self.depth,
+                             self.active)))
+
         else:
             x = f'comment = "{self.comment}" ' \
                 f'AND branch = "{self.parent.get_id()}" ' \
@@ -83,7 +92,8 @@ class commit:
             "creator": self.creator,
             "next_commit": self.next_commit,
             "previous_commit": self.previous,
-            "depth": self.depth
+            "depth": self.depth,
+            "active": self.active
         }
 
     def get_id(self):
@@ -110,10 +120,8 @@ class commit:
 
 
 class branch:
-    def __init__(self, db, name, repo, owner, create=True, id=1, files=None, depth=-1):
+    def __init__(self, db, name, repo, owner, create=True, id=1, depth=-1):
         # Declare variables
-        if files is None:
-            files = []
         self.db = db
         self.repo = repo
         self.name = name
@@ -130,10 +138,10 @@ class branch:
             self.depth = len([x for x in db.get("branches", "id", f'repo={repo}') if x < self.id])
         else:
             self.depth = depth
-        for numba, x, comment, creator, previous_commit in \
-                db.get("commits", "id, commit_name, comment, creator, previous_commit",
+        for numba, x, comment, creator, previous_commit, active in \
+                db.get("commits", "id, commit_name, comment, creator, previous_commit, active",
                        condition=f'branch="{self.id}"', first=False):
-            self.commits.append(commit(db, x, comment, self, creator, previous_commit, id=numba, create=False))
+            self.commits.append(commit(db, x, comment, self, creator, previous_commit, id=numba, create=False, activate=active))
         if self.commits:
             self.head = self.commits[-1]
         else:
@@ -162,8 +170,6 @@ class branch:
     def get_commits(self):
         return self.commits
 
-    def get_files(self):
-        return self.files
 
     def set_name(self, name):
         self.name = name
@@ -171,14 +177,14 @@ class branch:
     def get_name(self):
         return self.name
 
-    def create_commit(self, name, comment, creator, previous=-1, first=False, next_commitx=-1):
+    def create_commit(self, name, comment, creator, previous=-1, first=False, next_commitx=-1, activate="1"):
         if previous == -1:
             # the user didn't specify what commit this extends,
             # so it will stay -1 if it's the first commit,
             # or extend the last commit to this branch.
             previous = -1 if (len(self.commits) == 0 or first) else self.commits[-1].get_id()
         self.commits.append(
-            commit(self.db, name, comment, self, creator, previous, next_commit=next_commitx))
+            commit(self.db, name, comment, self, creator, previous, next_commit=next_commitx, activate=activate))
 
         # we also need to say in that commit that it's next
         # commit is the one we've added.
@@ -236,7 +242,7 @@ class repository:
             self.id = smallest_free(db.get("repos", "id"))
             db.edit('repos', 'owners', ", ".join(self.owners), condition=f'id="{self.id}"')
             db.edit('repos', 'creator', self.creator, condition=f'id="{self.id}"')
-            # self, db, name, repo, create=True, id=1, files=None
+
             self.branches.append(branch(db, "Main", self.id, self.creator))
             self.branches[0].create_commit("First commit", f"Initialized repo {self.name}", self.creator, first=True)
         else:
@@ -260,7 +266,7 @@ class repository:
         }
 
     def fork(self, name, forker, new_name=None, fork_from_commit=None, comment=""):
-        #  db, name, repo, create=True, id=1, files=[]
+
         to_copy = self.get_branch(name)
         if not fork_from_commit:
             fork_from_commit = to_copy.head.get_id()
@@ -270,8 +276,8 @@ class repository:
                 raise NameError(
                     f"There's already a branch called {name} in repo {self.name}, please pick a different name")
         else:
-            new_name = name + "_fork"
-        self.branches.append(branch(self.db, new_name, self.id, files=to_copy.get_files(), owner=forker))
+            new_name = to_copy.get_name() + "_fork"
+        self.branches.append(branch(self.db, new_name, self.id, owner=forker))
         # name, comment, creator, previous = -1, first = False, next_commitx = -1)
         self.branches[-1].create_commit(f"Forked from {to_copy.get_name()}", "Forked.", forker,
                                         previous=fork_from_commit)
@@ -356,16 +362,6 @@ class Database:
                            [],
                            create=False,
                            id=id))
-        # branch(self, name=name, repo=repo, create=False,files=files)
-        #                         for name, repo, files in
-        #                         self.get("branches JOIN repos ON repos.branches LIKE branches.id",
-        #                                  "branches.name, branches.repo, branches.files", first=False)
-
-        # self.add("messages", reformat(("2", "Merge request", "can i merge pain into main plz", "Eran", "Guy",
-        # "question", "/merge*8*4")))
-
-        # self.add("messages", reformat(("3", "Yet another request", "lets just merge it all. whats the worst that
-        # can happen?", "Eran", "Guy", "question", "/merge*7*9")))
 
         with open('static/users.js', 'w') as f:
             f.write(f'var users = {json.dumps(self.get("users", "name"))}')
@@ -383,13 +379,13 @@ class Database:
 
     def get_commits_info(self, repo):
         if str(repo).isnumeric():
-            return self.get('commits', 'id, commit_name, comment, branch, next_commit, previous_commit, depth',
+            return self.get('commits', 'id, commit_name, comment, branch, next_commit, previous_commit, depth, active',
                             condition=f'repo={repo}', first=False)
         else:
             repo_id = self.get("repos", "id", f'name="{repo}"')[0]
             return self.get(f'commits', 'id, commit_name, comment, branch, '
                                         'next_commit, '
-                                        'previous_commit, depth', condition=f'repo="{repo_id}"', first=False)
+                                        'previous_commit, depth, active', condition=f'repo="{repo_id}"', first=False)
 
     def fix_seq(self):
         b = self.get("branches", "id")
@@ -400,9 +396,6 @@ class Database:
         self.edit("sqlite_sequence", "seq", smallest_free(c) if c else 0, 'name="commits"')
         m = self.get("messages", "id")
         self.edit("sqlite_sequence", "seq", smallest_free(m) if m else 0, 'name="messages"')
-        q = self.get("commit_queue", "id")
-        self.edit("sqlite_sequence", "seq", smallest_free(q) if q else 0, 'name="commit_queue"')
-
     # self, db, name, owners, create=True, id=1
 
     def move_from_queue(self, id_in_queue):
@@ -593,11 +586,11 @@ class Database:
     def grant_ownership(self, user, repos_to_grant):
         for rep in repos_to_grant.split(", "):
             try:
-                repo = self.get("repos", "owners", condition=f'id="{rep}"')[0]
+                repo = self.get("repos", "owners", condition=f'id="{rep}"')[0].split(", ")
                 repo.append(user)
                 self.get_repo(rep).edit_owners(repo)
             except IndexError:
-                print("Couldn't do", rep)
+                print("Couldn't add ", rep)
 
     def revoke_ownership(self, user, repos_to_revoke):
         for rep in repos_to_revoke.split(', '):
