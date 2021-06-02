@@ -12,7 +12,10 @@
   {% if 'user' in session %}
     <div class="navigation_man">
       <a href="/create_repo">Create a repo</a>
+      {% if session['is_admin'] %}
       <a href="/users">Browse users</a>
+      <a href="/admin">Admin View</a>
+      {% endif %}
       <a href="/repos">{{session['user']}}'s Profile </a>
       <a href="/inbox">Inbox</a>
       <a href="/logout">Logout</a>

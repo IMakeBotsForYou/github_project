@@ -5,13 +5,6 @@
 {% endblock %}
 {% block form %}
 <br><br><br><br>
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            {% for msg in messages %}
-                <p class="flash_msg cen"><b>{{msg}}</b></p>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
     <div id="login">
         <form name='form-login'
         action="#" method="POST">
@@ -25,4 +18,13 @@
 
         </form>
     </div>
+<div>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for msg in messages %}
+                <p class="flash_msg cen"><b>{{msg}}</b></p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+</div>
 {% endblock %}

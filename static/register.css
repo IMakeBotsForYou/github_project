@@ -2,6 +2,8 @@ body {
   background-color: #2C2F33
 }
 
+
+
 .flashed_messages_div{
     position: absolute;
     z-index: 20;
@@ -36,7 +38,7 @@ body {
 position:absolute;
 right:25%;
 height: 60px;
-z-index: 2000;
+z-index: 10;
 }
 
 .img__img{

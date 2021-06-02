@@ -71,6 +71,27 @@ div.select {
   text-align:center;
   z-index: 2;
 }
+
+.display_option_button{
+font-family: Varela Round;
+font-size:18px;
+font-weight:bold;
+  position:relative;
+  padding: 25px 25px 25px 25px;
+  width: 175px;
+  height: 80px;
+  border-radius: 4px;
+  text-align:center;
+}
+
+.display_on{
+background: #1beac1;
+}
+
+.display_off{
+background: #b3b6b6;
+}
+
 .commit-information-side{
   position:relative;
   right: 10%;
@@ -84,6 +105,7 @@ div.select {
   text-align:center;
   z-index: 50;
 }
+
 
 #actions {
   position:relative;
@@ -150,6 +172,29 @@ div.select {
 	top:1px;
 }
 
+.graph_cell{
+width: 60%;
+height: 92%;
+float: left;
+padding: 10px 10px 10px 10px;
+
+}
+.border{
+border: 4px dotted blue;
+}
+
+.project_cell{
+width: 100%;
+height: 400px;
+}
+
+.text_cell{
+width: 25%;
+height: 100%;
+float: right;
+}
+
+
 #graph{
       transform: rotate(0.5deg);
       position: absolute;
@@ -159,6 +204,12 @@ div.select {
       width: 50%;
       height: 65%;
       float: right;
+}
+#merge-graph{
+      position: relative;
+      float: left;
+      left: 0;
+      top: 0;
 }
 .small-button-man{
     font-family: Varela Round;
@@ -174,6 +225,38 @@ div.select {
     top: 14%;
     left: 2%;
 }
+
+.list-container { width:100%; height: 100%; overflow-y: auto; float: left; margin-left: 10px;}
+
+.merge-left{
+    position: relative;
+    text-align: left;
+    background-color:#000;
+    color:#fff;
+    width: 45%;
+    float: left;
+}
+
+.merge-right{
+    position: relative;
+    background-color:#000;
+    text-align: left;
+    color:#fff;
+    width: 45%;
+    float: left;
+    right:0px;
+    overflow: auto;
+}
+
+.merge-down{
+    position: relative;
+    background-color:#000;
+    color:#fff;
+    width: 100%;
+    float: left;
+    height: 50px;
+}
+
 .popup{
     position: absolute;
     z-index: 1000;
@@ -182,14 +265,18 @@ div.select {
     -webkit-border-radius:15px;
     -moz-border-radius:15px;
     color:#fff;
-    max-width: 500px;
     padding: 0 10px 10px 10px;
-    width: 80%
-    margin-top: 15%;
-    margin-left: 40%;
+    width: 25%;
+    margin-top: 5px;
+    margin-left: 35%;
     text-align: center;
 }
-
+#merge-popup{
+top: 17%;
+margin-left: 10%;
+margin-right: 10%;
+width:80%;
+}
 .red {
 color: #f33
 }

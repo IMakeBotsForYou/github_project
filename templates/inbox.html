@@ -11,8 +11,9 @@
         {% if messages %}
             {% for id, title, content, sender, type in messages %}
                 <button type="button" class="collapsible">{{title}}</button>
-                <div class="content">
-                    <div><p style="margin: 0 0 14px 0;"><b>Message from {{sender}}:</b><br>{{content}}</p></div>
+                <div class="content white">
+                    <div><p id="message_content_{{id}}" style="margin: 0 0 14px 0;"><b>Message from {{sender}}:</b><br>{{content}}</p></div>
+
                         <div style="margin: 0 auto;">
                             {% if type == "question" %}
                                 <button class="form-button" id="confirm-button_{{id}}" style="float: left; color: #000;" >Accept</button>
@@ -34,6 +35,10 @@
                         </div>
                     </div>
                 <br><br>
+                <script>
+                    var x = document.getElementById("message_content_{{id}}");
+                    x.innerHTML = `Message from {{sender}}:</b><br>{{content}}</p>`.replace("\\n", "<pre>").replace("\n", "<pre>");
+                </script>
             {% endfor %}
         {% else %}
             <h1 class="white">No messages</h1>
