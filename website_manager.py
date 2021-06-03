@@ -23,6 +23,7 @@ if __name__ == "__main__":
 
 
 def clear_admin_images():
+    # delete all images with the file prefix "admin" to reset admin view
     if session['user'] != db['ex'].admin:
         return
     for fname in os.listdir("static"):
@@ -136,7 +137,7 @@ def logout():
     return redirect(url_for("login"))
 
 
-def commit_to_message(files, receiver, title, desc, current_id, repo, branch):
+def commit_to_message(receiver, title, desc, current_id, repo, branch):
     # add commit to queue
     message_title = f'{session["user"]} has suggested {title} in repo {repo} - {branch}'
     message_desc = f"{desc}\n" + \
@@ -207,7 +208,8 @@ def generate_commit_diff(current, previous, merge=False, output_mode=0):
     current_files, unpack_curr = get_commit_files(current)
     previous_files, unpack_prev = get_commit_files(previous)
     print("----------------------------------")
-    print(f"\n\nBeginning to write manifest. Settings:\nCURR:\t{current}\nPREV:\t{previous}\nMERG:\t{merge}\nMODE:\t{output_mode}\n")
+    print(
+        f"\n\nBeginning to write manifest. Settings:\nCURR:\t{current}\nPREV:\t{previous}\nMERG:\t{merge}\nMODE:\t{output_mode}\n")
     manifest = "" if output_mode == 0 else []
     # First we check all current directories -> last commit | To check adds / edits
     # then last commit -> current | To check deletes
@@ -551,7 +553,7 @@ def make_save_commit(s, files, name, commit_man, comment=""):
 
     save_commit_manifest(current_id, commit_man)
     if active == "0":
-        commit_to_message(files, branch_owner, name, comment, current_id, s['current_repo'],
+        commit_to_message(branch_owner, name, comment, current_id, s['current_repo'],
                           s['branch_name'])
     draw_graph(to_highlight=s['to_highlight'], reload_colors=s['to_highlight'] == 0)
     return render_template("repos.html")
@@ -564,6 +566,9 @@ def file_history_full(commit_id, file_list):
 
 
 def input_file_history(commit_id, path):
+    # go through the commit chain and
+    # scan everything, to check when the file has changed
+    # or has been created.
     chain = db['ex'].get_commit_chain(commit_id)
     file_data = {}
     updated = re.compile(fr"^(updated|added).+{path}", flags=re.MULTILINE)
@@ -603,8 +608,11 @@ def page_not_found(e):
 
 @app.route("/admin", methods=["POST", "GET"])
 def admin():
+    # if user not logged in return to register page
     if "user" not in session:
         return redirect(url_for("register"))
+
+    # if user not admin ("Dan Lvov") return to login page
     if session['user'] != db['ex'].admin:
         return redirect("/login"), 404
     else:
@@ -618,7 +626,10 @@ def admin():
             draw_graph(0, True, False, admin_view=True, repo=r_id)
             creator, owners, name = db['ex'].get("repos", "creator, owners, name", f'id="{r_id}"', first=False)[0]
             session['all_images'].append((creator, owners, name, f"admin_{r_id}.png"))
-
+        # the admin page has two mods. visual and json
+        # first we draw the graph for every repo, and then
+        # dump the entire database as a json file.
+        # this way, we don't need to reload the page.
         with open("./static/admin_json.js", "w+") as f:
             f.write("var json_text = " + json.dumps(db['ex'].to_json()) + ";")
         return render_template("admin_view.html")
@@ -751,7 +762,7 @@ def repos():
                 pass
             else:
                 print(f"Created {commit_path} merge commit folder")
-            merger_path = os.path.join("temp_zip", f"merging_{after_merge_id}_{str(time.time()).replace('.','')}")
+            merger_path = os.path.join("temp_zip", f"merging_{after_merge_id}_{str(time.time()).replace('.', '')}")
 
             try:
                 os.mkdir(merger_path)
@@ -840,9 +851,9 @@ def repos():
                         break
                 if gotem:
                     prev_b_head_id = db['ex'] \
-                                            .get_repo(session["repo_id"]) \
-                                            .get_branch(session['parent_branch_id']) \
-                                            .head.id
+                        .get_repo(session["repo_id"]) \
+                        .get_branch(session['parent_branch_id']) \
+                        .head.id
 
                     session['commit_diff'] = \
                         generate_commit_diff(session['to_highlight'],
@@ -854,7 +865,8 @@ def repos():
             else:
                 session['repo_id'] = request.form["commit_man"]
         except Exception as e:
-            if str(e) != "400 Bad Request: The browser (or proxy) sent a request that this server could not understand.":
+            if str(
+                    e) != "400 Bad Request: The browser (or proxy) sent a request that this server could not understand.":
                 print(e)
         # now we need to copy the current commit file to the static folder
         # first we clear it
@@ -905,6 +917,7 @@ def repos():
             draw_graph(session['to_highlight'], reload_colors=True, erase_var=True)
         except Exception as e:
             print(e)
+
     # # # # # # # # # # # # # # # #
     #   Simply loading the page   #
     # # # # # # # # # # # # # # # #
@@ -914,7 +927,6 @@ def repos():
 
 @app.route("/users")
 def users():
-
     if "user" not in session:
         return redirect(url_for("register"))
     if session['user'] != db['ex'].admin:
