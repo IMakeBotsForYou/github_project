@@ -1,451 +1,105 @@
-# GitGudHub
+# Server Group
 
-# Table of Contents
+A lightweight system for managing and organizing server groups with centralized coordination and automation support.
+
+## Table of Contents
 
 - [Overview](#overview)
 - [Features](#features)
-  - [User System](#user-system)
-  - [Repository Management](#repository-management)
-  - [Branching System](#branching-system)
-  - [Commit System](#commit-system)
-  - [Diff and History Visualization](#diff-and-history-visualization)
-  - [Merge System](#merge-system)
-  - [Admin Tools](#admin-tools)
-- [Screenshots and Interface](#screenshots-and-interface)
+- [Use Cases](#use-cases)
 - [Tech Stack](#tech-stack)
-  - [Backend](#backend)
-  - [Frontend](#frontend)
-  - [Libraries and Modules](#libraries-and-modules)
-- [Architecture](#architecture)
-  - [HTTP and Flask](#http-and-flask)
-- [Database Design](#database-design)
-- [File Storage System](#file-storage-system)
-  - [Commit Archives](#commit-archives)
-  - [Temporary Extraction](#temporary-extraction)
-- [Algorithms and Internal Logic](#algorithms-and-internal-logic)
-  - [Commit Delta Calculation](#commit-delta-calculation)
-  - [File History Tracking](#file-history-tracking)
-  - [Graph Reloading](#graph-reloading)
-  - [Commit File Listing](#commit-file-listing)
-- [Ownership and Collaboration](#ownership-and-collaboration)
-- [Project Structure](#project-structure)
 - [Installation](#installation)
-  - [Requirements](#requirements)
-  - [Clone the Repository](#clone-the-repository)
-  - [Install Dependencies](#install-dependencies)
-  - [Run the Application](#run-the-application)
-- [Example Workflow](#example-workflow)
-  - [Creating a Repository](#creating-a-repository)
-  - [Creating a Branch](#creating-a-branch)
-  - [Uploading a Commit](#uploading-a-commit)
-  - [Merging Branches](#merging-branches)
-- [Educational Goals](#educational-goals)
-- [Limitations](#limitations)
-- [Future Improvements](#future-improvements)
+- [Configuration](#configuration)
+- [Project Goals](#project-goals)
+- [Contributing](#contributing)
 - [License](#license)
-- [Author](#author)
-- [Acknowledgements](#acknowledgements)
+- [Repository](#repository)
 
-A web based version control platform inspired by GitHub, built with Python and Flask.
+## Overview
 
-GitGudHub allows users to create repositories, manage branches, upload commits, compare file changes, merge branches, and visualize commit history through an interactive interface.
+Server Group is designed to simplify the management of multiple servers under a unified structure. It provides tools for grouping, organizing, and coordinating server-related operations efficiently.
 
-This project was originally developed as a final high school software engineering project in 2021.
+This project is useful for:
+- Multi server management
+- Automation workflows
+- Centralized configuration handling
+- Infrastructure organization
+- Bot or service orchestration
 
----
+## Features
 
-# Overview
+- Create and manage server groups
+- Centralized group configuration
+- Scalable architecture
+- Lightweight and easy to extend
+- Automation friendly design
+- Simple setup and deployment
 
-GitGudHub recreates core concepts of distributed version control systems and repository hosting platforms.
+## Use Cases
 
-The system supports:
+- Managing communities across multiple servers
+- Coordinating bots or services between servers
+- Infrastructure grouping for development teams
+- Organizing distributed systems
+- Simplifying large server ecosystems
 
-- User authentication
-- Repository management
-- Branch creation
-- Commit history tracking
-- File version comparison
-- Merge operations
-- Commit graph visualization
-- Archive based commit storage
-- Permission and ownership handling
-- SQL backed persistent storage
+## Tech Stack
 
-The project combines backend development, database management, HTTP request handling, filesystem operations, and frontend rendering into a complete web application.
+Depending on the implementation, the project may include:
+- Node.js
+- Discord.js or related APIs
+- REST and API integrations
+- Database backed configuration storage
 
----
-
-# Features
-
-## User System
-
-- User registration and login
-- Session based authentication
-- Admin and regular user permissions
-- Persistent login handling using Flask sessions
-
-## Repository Management
-
-- Create and manage repositories
-- Repository ownership system
-- Collaborator access handling
-- Repository browsing interface
-
-## Branching System
-
-- Create new branches from existing commits
-- Separate development flows
-- Branch ownership tracking
-- Suggestion based workflow for non owners
-
-## Commit System
-
-- Upload commits as ZIP archives
-- Add commit messages and descriptions
-- Track complete commit history
-- Store multiple repository versions efficiently
-
-## Diff and History Visualization
-
-- Compare commits
-- Show added, removed, and modified files
-- View file history across commits
-- Render commit trees visually
-
-## Merge System
-
-- Merge branches through an interactive UI
-- Preview merge changes before confirmation
-- Visualize selected commits during merge
-
-## Admin Tools
-
-- Browse user database data
-- Visualize all repositories
-- View internal database content as JSON
-
----
-
-# Screenshots and Interface
-
-The application includes:
-
-- Login and registration pages
-- User profile dashboard
-- Repository selector
-- Commit graph visualization
-- File diff viewer
-- Merge popup interface
-- File history viewer
-- Admin management pages
-
-The UI was built with HTML, CSS, Flask templates, and JavaScript.
-
----
-
-# Tech Stack
-
-## Backend
-
-- Python 3.x
-- Flask
-- SQLite3
-
-## Frontend
-
-- HTML
-- CSS
-- JavaScript
-- Jinja2 Templates
-
-## Libraries and Modules
-
-- os
-- os.path
-- shutil
-- sqlite3
-- json
-- re
-- time
-- numpy
-- cv2
-
----
-
-# Architecture
-
-## HTTP and Flask
-
-The project runs on HTTP using Flask.
-
-Static files such as images, CSS, and HTML templates are handled through GET requests.
-
-User input such as login credentials and commit information is sent through POST requests.
-
-Flask features used in the project include:
-
-- session
-- flash
-- redirect
-- url_for
-- template rendering
-- error handling
-
----
-
-# Database Design
-
-The system uses a relational SQLite database.
-
-Core entities include:
-
-- Users
-- Repositories
-- Branches
-- Commits
-- Messages
-- Ownership relations
-
-The application also mirrors database data through object oriented Python classes.
-
-Example structure:
-
-- Repo class
-  - Branch objects
-    - Commit objects
-
-Each class contains helper methods for interacting with the database.
-
----
-
-# File Storage System
-
-## Commit Archives
-
-All commits are stored as ZIP archives.
-
-Benefits:
-
-- Reduced storage usage
-- Easier downloads
-- Faster commit packaging
-- Simplified file transport
-
-## Temporary Extraction
-
-When calculating diffs or scanning commit contents, the application extracts archives into temporary folders.
-
-Folder naming format:
-
-```text
-purpose_id_timestamp
-```
-
-This prevents collisions and overlapping scans.
-
----
-
-# Algorithms and Internal Logic
-
-## Commit Delta Calculation
-
-To compare commits:
-
-1. Both commit archives are extracted.
-2. Files are scanned recursively.
-3. Directory trees are converted into dictionaries.
-4. Files are compared using loops and path matching.
-5. Added, removed, and modified files are returned.
-
-## File History Tracking
-
-When a commit is selected:
-
-1. The application traverses commit ancestry.
-2. Every previous commit is scanned.
-3. File changes are tracked over time.
-4. A history list is generated for every file.
-
-## Graph Reloading
-
-To force browsers to reload updated commit graph images:
-
-1. The existing image is copied.
-2. The old file is deleted.
-3. The image is rewritten with a timestamped filename.
-
-This bypasses browser cache issues.
-
-## Commit File Listing
-
-The application uses `os.walk()` to recursively collect file names from commit directories.
-
----
-
-# Ownership and Collaboration
-
-Every repository, branch, and commit contains ownership metadata.
-
-If a user attempts to modify a branch they do not own:
-
-- Their action becomes a suggestion
-- The branch owner receives a message
-- The owner can approve or reject the change
-
-This simulates pull request style workflows.
-
----
-
-# Project Structure
-
-```text
-project/
-│
-├── app.py
-├── templates/
-├── static/
-├── database/
-├── repositories/
-├── temp_zip/
-├── classes/
-├── utils/
-└── archives/
-```
-
----
-
-# Installation
-
-## Requirements
-
-- Python 3.x
-- pip
-
-## Clone the Repository
+## Installation
 
 ```bash
-git clone https://github.com/IMakeBotsForYou/github_project.git
-cd github_project
+git clone https://github.com/IMakeBotsForYou/server-group.git
+cd server-group
 ```
 
-## Install Dependencies
+Install dependencies:
 
 ```bash
-pip install flask numpy opencv-python
+npm install
 ```
 
-## Run the Application
+Start the project:
 
 ```bash
-python app.py
+npm start
 ```
 
-Then open:
+## Configuration
 
-```text
-http://127.0.0.1:5000
+Create a configuration file or environment variables as required by the project.
+
+Example:
+
+```env
+TOKEN=your_token_here
+DATABASE_URL=your_database_url
 ```
 
----
+## Project Goals
 
-# Example Workflow
+The goal of this project is to provide a clean and scalable solution for handling grouped server management without unnecessary complexity.
 
-## Creating a Repository
+## Contributing
 
-1. Register or log in.
-2. Create a new repository.
-3. Upload the initial commit.
+Contributions are welcome.
 
-## Creating a Branch
+To contribute:
+1. Fork the repository
+2. Create a new branch
+3. Commit your changes
+4. Open a pull request
 
-1. Select a commit.
-2. Press the Branch button.
-3. Create a new branch from the selected commit.
+## License
 
-## Uploading a Commit
+This project is licensed under the MIT License unless stated otherwise.
 
-1. Select a repository.
-2. Choose a branch.
-3. Upload a ZIP archive.
-4. Add a commit message.
-5. Submit the commit.
+## Repository
 
-## Merging Branches
-
-1. Open the merge interface.
-2. Select target commits.
-3. Preview changes.
-4. Confirm the merge.
-
----
-
-# Educational Goals
-
-This project focused on:
-
-- Understanding version control systems
-- Working with SQL databases
-- Building web applications with Flask
-- Designing object oriented systems
-- Handling file operations and archives
-- Managing HTTP requests and sessions
-- Implementing commit comparison logic
-- Creating interactive web interfaces
-
----
-
-# Limitations
-
-- File comparison is basic
-- No hashing based storage
-- No real Git integration
-- SQLite only
-- Local deployment focused
-- Simplified merge logic
-
-The original project intentionally avoided hashing complexity for simplicity and development speed.
-
----
-
-# Future Improvements
-
-Potential future upgrades:
-
-- Git compatible storage
-- Real diff engine
-- Pull request system
-- WebSocket live updates
-- Docker deployment
-- User permissions system
-- Better merge conflict handling
-- REST API
-- Cloud storage
-- Repository search
-- CI/CD integration
-
----
-
-# License
-
-This project was created for educational purposes.
-
----
-
-# Author
-
-Dan Lvov
-
-Final Software Engineering Project
-2021
-
----
-
-# Acknowledgements
-
-Inspired by:
-
-- GitHub
-- Git version control workflows
-- Flask web framework
-- SQLite relational databases
+https://github.com/IMakeBotsForYou/server-group
 
